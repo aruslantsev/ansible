@@ -1,0 +1,48 @@
+---
+# tasks file for zabbix-agent2
+
+- name: Install packages using apt
+  become: yes
+  apt: name={{ item }} state=present
+  loop: [patch, zabbix-agent2]
+
+- name: Patch config
+  become: true
+  patch:
+    src: zabbix_agent2.conf.patch
+    dest: /etc/zabbix/zabbix_agent2.conf
+
+- name: Use tls key
+  import_tasks: tls.yml
+  when: use_psk is defined and use_psk
+
+- name: Allow OpenSSH
+  become: true
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: '22'
+
+- name: Allow agent
+  become: true
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: '10050'
+
+- name: Enable ufw
+  become: true
+  community.general.ufw:
+    state: enabled
+
+- name: Reload ufw
+  become: true
+  community.general.ufw:
+    state: reloaded
+
+- name: Start service
+  become: true
+  ansible.builtin.service:
+    name: zabbix-agent2
+    enabled: yes
+    state: started
