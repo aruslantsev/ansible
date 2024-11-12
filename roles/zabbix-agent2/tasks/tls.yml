@@ -1,0 +1,16 @@
+---
+# tasks file for zabbix-agent2
+
+- name: Copy key
+  become: true
+  copy:
+    src: "{{ psk_key_path }}"
+    dest: /etc/zabbix/zabbix_agentd.psk
+
+- name: Patch config for tls support
+  become: true
+  patch:
+    src: zabbix_agent2.tls.patch
+    dest: /etc/zabbix/zabbix_agent2.conf
+
+
