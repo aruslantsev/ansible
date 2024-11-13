@@ -1,0 +1,70 @@
+---
+# tasks file for openvpn
+- name: Install needed packages
+  become: yes
+  apt: name={{ item }} state=present
+  loop: [patch, easy-rsa, openvpn, ufw]
+
+- name: Copy certificates and keys
+  become: true
+  copy:
+    src: ~/ca/server
+    dest: /etc/openvpn
+
+- name: Copy server config
+  become: true
+  copy:
+    src: server.conf
+    dest: /etc/openvpn/server
+
+- name: sysctl - ipv4 forwarding enable
+  become: true
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: ufw - allow ssh@22/tcp
+  become: true
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: '22'
+
+- name: ufw - allow openvpn@1194/udp
+  become: true
+  community.general.ufw:
+    rule: allow
+    proto: udp
+    port: '1194'
+
+- name: Patch ufw before.rules - enable masquerade
+  become: true
+  patch:
+    src: ufw-rules.patch
+    dest: /etc/ufw/before.rules
+
+- name: Patch ufw defaults - accept forward
+  become: true
+  patch:
+    src: ufw-forward-accept.patch
+    dest: /etc/default/ufw
+
+- name: Enable ufw
+  become: true
+  community.general.ufw:
+    state: enabled
+
+- name: Reload ufw
+  become: true
+  community.general.ufw:
+    state: reloaded
+
+- name: Start openvpn-server@server
+  become: true
+  ansible.builtin.service:
+    name: openvpn-server@server
+    enabled: yes
+    state: started
